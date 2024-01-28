@@ -5,7 +5,7 @@ import * as Location from 'expo-location';
 import axios from 'axios';
 
 const DriverView = ({onLogout,name}) => {
-  const [isTracking, setIsTracking] = useState(true);
+  const [isTracking, setIsTracking] = useState(false);
   const [isLoggedIn,setIsLoggedIn]=useState(true);
 
   // useEffect(() => {
@@ -81,8 +81,8 @@ const DriverView = ({onLogout,name}) => {
       });
       const response = await axios.post('http://192.168.29.154:5000/api/driver/location', {
         name,
-        latitude: 12.876548,
-        longitude: 80.226682,
+        latitude: 12.872959,
+        longitude: 80.226402,
       });
     } catch (error) {
       console.error('Error updating location:', error);

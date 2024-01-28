@@ -1,5 +1,5 @@
 import React, { useState, useEffect,useRef} from 'react';
-import { View, Text, Button, StyleSheet, Dimensions,Alert } from 'react-native';
+import { View, Text, Button, StyleSheet, Dimensions,Alert,TouchableOpacity } from 'react-native';
 import MapView, { Marker,Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import axios from 'axios';
@@ -14,18 +14,23 @@ const UserView = ({ onLogout }) => {
   const [closestStop, setClosestStop] = useState(null);
   const [busStopsVisible, setBusStopsVisible] = useState(false);
   const [selectedBusStop,setselectedBusStop]=useState(null);
+  const [refreshFlag, setRefreshFlag] = useState(false);
 
   const proximityCheckIntervalRef = useRef(null); 
 
   useEffect(() => {
     getLocationAsync();
-    fetchDriverLocations();
-    const intervalId = setInterval(fetchDriverLocations, 3000);
+    const handleRefresh = () => {
+      fetchDriverLocations();
+      // Toggle the refreshFlag to trigger a re-render
+      setRefreshFlag((prevFlag) => !prevFlag);
+    };
+    const intervalId = setInterval(fetchDriverLocations, 5000);
     return () => {
       clearInterval(intervalId);
       clearInterval(proximityCheckIntervalRef.current);
     }
-  }, []);
+  }, [refreshFlag]);
 
   useEffect(() => {
     setClosestStop(findClosestStop(userLocation, selectedBusRoute));
@@ -44,6 +49,7 @@ const UserView = ({ onLogout }) => {
               text: 'OK',
               onPress: () => {
                 setselectedBusStop(null);
+                setRefreshFlag((prevFlag) => !prevFlag);
               },
             },
           ],
@@ -52,6 +58,28 @@ const UserView = ({ onLogout }) => {
       }
     }
   }, [selectedDriver, selectedBusStop, driverLocations]);
+
+  // const check=()=>{
+  //   if (selectedDriver && selectedBusStop) {
+  //     const isNearBusStop = isDriverNearBusStop(selectedBusStop);
+  
+  //     if (isNearBusStop) {
+  //       Alert.alert(
+  //         'Driver Reached',
+  //         'The driver has reached the selected bus stop.',
+  //         [
+  //           {
+  //             text: 'OK',
+  //             onPress: () => {
+  //               setselectedBusStop(null);
+  //             },
+  //           },
+  //         ],
+  //         { cancelable: false }
+  //       );
+  //     }
+  //   }
+  // }
   
 
   const getLocationAsync = async () => {
@@ -76,7 +104,6 @@ const UserView = ({ onLogout }) => {
       const response = await axios.get('http://192.168.29.154:5000/api/drivers/locations');
       const trackingDrivers = response.data.filter((driver) => driver.isTracking);
       setdriverLocations(trackingDrivers);
-  
       if (selectedDriver) {
         // Find the selected driver from the fetched tracking drivers
         const updatedSelectedDriver = trackingDrivers.find((driver) => driver._id === selectedDriver._id);
@@ -89,6 +116,7 @@ const UserView = ({ onLogout }) => {
           clearSelectedDriver();
         }
       }
+      setRefreshFlag((prevFlag) => !prevFlag);
     } catch (error) {
       console.error(error);
     }
@@ -112,6 +140,7 @@ const UserView = ({ onLogout }) => {
         }}
         title={driver.name}
         onPress={() => handleMarkerPress(driver)}
+        zIndex={selectedDriver && selectedDriver._id === driver._id ? 2 : 1}
       />
     ));
   };
@@ -178,6 +207,7 @@ const UserView = ({ onLogout }) => {
   };
 
   const clearSelectedDriver = () => {
+    console.log(selectedDriver);
     setSelectedDriver(null);
     setSelectedBusRoute([]);
     setBusStopsVisible(false);
@@ -210,11 +240,19 @@ const UserView = ({ onLogout }) => {
   const isDriverNearBusStop = (busStop) => {
     const driverLatitude = selectedDriver?.location?.latitude;
     const driverLongitude = selectedDriver?.location?.longitude;
+  
     if (driverLatitude && driverLongitude) {
       const proximityThreshold = 0.005;
-      const distance = calculateDistance(driverLatitude, driverLongitude, busStop.latitude, busStop.longitude);
+      const distance = calculateDistance(
+        driverLatitude,
+        driverLongitude,
+        busStop.latitude,
+        busStop.longitude
+      );
+  
       return distance <= proximityThreshold;
     }
+  
     return false;
   };
   
@@ -269,18 +307,30 @@ const UserView = ({ onLogout }) => {
   };
 
   const createBusStopMarkers = () => {
-    return selectedBusRoute.map((stop, index) => (
-      <Marker
-        key={index}
-        coordinate={{
-          latitude: stop.latitude,
-          longitude: stop.longitude,
-        }}
-        title={stop.stopName}
-        pinColor='green'
-        onPress={() => handleSetProximityAlert(stop)}
-      />
-    ));
+    return selectedBusRoute.map((stop, index) => {
+      const isDriverAtBusStop =
+        selectedDriver &&
+        selectedDriver.bus &&
+        selectedDriver.bus.currentStop &&
+        selectedDriver.bus.currentStop.stopName === stop.stopName;
+  
+      // Determine the zIndex based on whether the driver is at the current bus stop
+      const zIndex = isDriverAtBusStop ? 1 : 0;
+  
+      return (
+        <Marker
+          key={index}
+          coordinate={{
+            latitude: stop.latitude,
+            longitude: stop.longitude,
+          }}
+          title={stop.stopName}
+          pinColor="green"
+          onPress={() => handleSetProximityAlert(stop)}
+          zIndex={zIndex}
+        />
+      );
+    });
   };
 
 
@@ -300,14 +350,21 @@ const UserView = ({ onLogout }) => {
               onMapReady={handleMapReady}
             >
               {mapReady && <Marker coordinate={userLocation} title="You are here" pinColor='blue'/>}
+              {selectedDriver && busStopsVisible && createBusStopMarkers()}
               {renderDriverMarkers()}
-              {busStopsVisible && createBusStopMarkers()}
               {selectedDriver && renderBusRoutePolyline()}
             </MapView>
           )}
           {!userLocation && <Text>Loading...</Text>}
           <Button style={styles.button} title="Refresh" onPress={handleRefresh} />
           <Button title="Logout" onPress={handleLogout} />
+          {selectedDriver && (
+            <View style={styles.closeButtonContainer}>
+              <TouchableOpacity onPress={clearSelectedDriver}>
+                <Text style={styles.closeButtonText}>Close Driver</Text>
+              </TouchableOpacity>
+            </View>
+          )}
           {/* {selectedDriver && (
             <View style={styles.busRouteContainer}>
               <Text style={styles.busRouteTitle}>Bus Route</Text>
@@ -334,6 +391,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
     padding: 16,
+    position:'relative',
   },
   title: {
     fontSize: 24,
@@ -394,6 +452,18 @@ const styles = StyleSheet.create({
   },
   highlightedBusRouteStop: {
     color: 'red', // or any other styling you want for the highlighted bus stop
+  },
+  closeButtonContainer: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: 'lightgray',
+    padding: 10,
+    borderRadius: 5,
+  },
+  closeButtonText: {
+    fontSize: 16,
+    color: 'black',
   },
 });
 
