@@ -30,7 +30,7 @@ const DriverView = ({onLogout,name}) => {
       const { latitude, longitude } = location.coords;
 
       // Send the location update to the server along with user ID and isTracking status
-      await axios.post('http://192.168.29.154:5000/api/driver/location', {
+      await axios.post('http://192.168.1.32:5000/api/driver/location', {
         name,
         latitude,
         longitude,
@@ -43,7 +43,7 @@ const DriverView = ({onLogout,name}) => {
 
   const handleStartTracking = async () => {
     try {
-      const response = await axios.post('http://192.168.29.154:5000/api/driver/start-tracking', {
+      const response = await axios.post('http://192.168.1.32:5000/api/driver/start-tracking', {
         name: name, // Assuming userData contains the driver information
       });
       setIsTracking(true);
@@ -54,7 +54,7 @@ const DriverView = ({onLogout,name}) => {
   
   const handleStopTracking = async () => {
     try {
-      const response = await axios.post('http://192.168.29.154:5000/api/driver/stop-tracking', {
+      const response = await axios.post('http://192.168.1.32:5000/api/driver/stop-tracking', {
         name: name, // Assuming userData contains the driver information
       });
       setIsTracking(false);
@@ -76,13 +76,15 @@ const DriverView = ({onLogout,name}) => {
   const handleUpdateLocation = async () => {
     // Simulate a location change for testing purposes
     try {
-      const res = await axios.post('http://192.168.29.154:5000/api/driver/start-tracking', {
+      const res = await axios.post('http://192.168.1.32:5000/api/driver/start-tracking', {
         name: name, // Assuming userData contains the driver information
       });
-      const response = await axios.post('http://192.168.29.154:5000/api/driver/location', {
+      const response = await axios.post('http://192.168.1.32:5000/api/driver/location', {
         name,
-        latitude: 12.872959,
-        longitude: 80.226402,
+        // latitude: 12.872959,
+        // longitude: 80.226402,
+        latitude: 12.876548,
+        longitude: 80.226682,
       });
     } catch (error) {
       console.error('Error updating location:', error);

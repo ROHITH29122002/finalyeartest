@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { View, Text, Button, StyleSheet } from 'react-native';
 import UserLoginView from './Views/UserLoginView';
 import DriverLoginView from './Views/DriverLoginView';
+import AdminLoginView from "./Views/AdminLoginView"
 
 const App = () => {
   const [role, setRole] = useState('null'); // Set a default role
@@ -16,6 +17,8 @@ const App = () => {
       return <UserLoginView />;
     } else if (role === 'driver') {
       return <DriverLoginView />;
+    } else if (role === 'admin') {
+      return <AdminLoginView />;
     } else if(role === 'null') {
       return (
         <View style={styles.container}>
@@ -23,6 +26,7 @@ const App = () => {
           <View style={styles.buttonContainer}>
             <Button title="User" onPress={() => handleRoleSelection('user')} />
             <Button title="Driver" onPress={() => handleRoleSelection('driver')} />
+            <Button title="Admin" onPress={() => handleRoleSelection('admin')} />
           </View>
         </View>
       );

@@ -13,10 +13,9 @@ const UserLoginView = () => {
       alert('Please fill in all fields');
       return;
     }
-
     // Make API call to driver login endpoint on the server
     try {
-      const response = await fetch('http://192.168.29.154:5000/api/user/login', {
+      const response = await fetch('http://192.168.1.32:5000/api/user/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -49,7 +48,7 @@ const UserLoginView = () => {
 
     // Make API call to user registration endpoint on the server
     try {
-      const response = await fetch('http://192.168.29.154:5000/api/user/register', {
+      const response = await fetch('http://192.168.1.32:5000/api/user/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

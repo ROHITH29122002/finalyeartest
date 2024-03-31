@@ -16,7 +16,7 @@ const DriverLoginView = ({ onLogin }) => {
 
     // Make API call to driver login endpoint on the server
     try {
-      const response = await fetch('http://192.168.29.154:5000/api/driver/login', {
+      const response = await fetch('http://192.168.1.32:5000/api/driver/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -48,7 +48,7 @@ const DriverLoginView = ({ onLogin }) => {
 
     // Make API call to driver registration endpoint on the server
     try {
-      const response = await fetch('http://192.168.29.154:5000/api/driver/register', {
+      const response = await fetch('http://192.168.1.32:5000/api/driver/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

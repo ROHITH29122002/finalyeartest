@@ -5,10 +5,12 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const bodyParser = require('body-parser');
 require('dotenv').config();
+const cors=require('cors');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+app.use(cors());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 
@@ -47,11 +49,10 @@ const busSchema = new mongoose.Schema({
 });
 const Bus = mongoose.model('Bus', busSchema);
 
-
 const insertDummyBus = async () => {
   try {
     const dummyBusData = {
-      busNo: '1',
+      busNo: '2',
       route: [
         {
           latitude: 12.872959,
@@ -89,6 +90,13 @@ const insertDummyBus = async () => {
     console.error('Error inserting dummy bus:', error);
   }
 };
+
+const adminSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+});
+
+const Admin = mongoose.model('Admin', adminSchema);
 
 // Call the function to insert the dummy bus
 // insertDummyBus();
@@ -146,38 +154,38 @@ app.post('/api/user/login', async (req, res) => {
 // Driver registration route
 app.post('/api/driver/register', async (req, res) => {
   try {
-    const { name, busNumber } = req.body;
+      const { name, busNumber } = req.body;
 
-    // Check if driver already exists
-    const existingDriver = await Driver.findOne({ name });
-    if (existingDriver) {
-      return res.status(400).json({ error: 'Driver already exists' });
-    }
+      // Check if driver already exists
+      const existingDriver = await Driver.findOne({ name });
+      if (existingDriver) {
+          return res.status(400).json({ error: 'Driver already exists' });
+      }
 
-    // Query the buses collection to find the bus with the specified bus number
-    const existingBus = await Bus.findOne({ busNo: busNumber });
+      // Query the buses collection to find the bus with the specified bus number
+      const existingBus = await Bus.findOne({ busNo: busNumber });
 
-    if (!existingBus) {
-      return res.status(400).json({ error: 'Bus not found with the specified bus number' });
-    }
+      if (!existingBus) {
+          return res.status(400).json({ error: 'Bus not found with the specified bus number' });
+      }
 
-    // Create a new driver linked to the existing bus
-    const newDriver = new Driver({
-      name,
-      bus: existingBus._id, // Link the driver to the existing bus using the bus's _id
-      location: {
-        latitude: null,
-        longitude: null,
-      },
-      isTracking:false,
-    });
+      // Create a new driver linked to the existing bus
+      const newDriver = new Driver({
+          name,
+          bus: existingBus._id, // Link the driver to the existing bus using the bus's _id
+          location: {
+              latitude: null,
+              longitude: null,
+          },
+          isTracking: false,
+      });
 
-    await newDriver.save();
+      await newDriver.save();
 
-    res.status(200).json({ message: 'Driver registered successfully' });
+      res.status(200).json({ message: 'Driver registered successfully' });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server error' });
+      console.error(error);
+      res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -283,6 +291,136 @@ app.post('/api/driver/stop-tracking', async (req, res) => {
   }
 });
 
+app.get('/api/buses', async (req, res) => {
+  try {
+    const buses = await Bus.find();
+    res.status(200).json(buses);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Admin registration route
+app.post('/api/admin/register', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    // Check if admin already exists
+    const existingAdmin = await Admin.findOne({ username });
+    if (existingAdmin) {
+      return res.status(400).json({ error: 'Admin already exists' });
+    }
+
+    // Hash the password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Create a new admin
+    const newAdmin = new Admin({ username, password: hashedPassword });
+    await newAdmin.save();
+
+    res.status(200).json({ message: 'Admin registered successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Admin login route
+app.post('/api/admin/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const admin = await Admin.findOne({ username });
+    if (!admin) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Check password
+    const isMatch = await bcrypt.compare(password, admin.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Create and send a JWT token
+    const token = jwt.sign({ adminId: admin._id, userType: 'admin' }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    res.status(200).json({ token, userType: 'admin', admin });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.delete('/api/admin/remove-driver', async (req, res) => {
+  try {
+    const { driverName } = req.body;
+
+    // Find and remove the driver by name
+    const removedDriver = await Driver.findOneAndRemove({ name: driverName });
+
+    if (!removedDriver) {
+      return res.status(404).json({ error: 'Driver not found' });
+    }
+
+    res.status(200).json({ message: 'Driver removed successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/admin/add-bus', async (req, res) => {
+  try {
+    const { busNumber, route } = req.body;
+
+    // Validate inputs
+    if (!busNumber || !route || !Array.isArray(route) || route.length === 0) {
+      return res.status(400).json({ error: 'Invalid input data' });
+    }
+
+    // Check if the bus with the given bus number already exists
+    const existingBus = await Bus.findOne({ busNo: busNumber });
+    if (existingBus) {
+      return res.status(409).json({ error: 'Bus with the same bus number already exists' });
+    }
+
+    // Create a new Bus instance
+    const newBus = new Bus({
+      busNo: busNumber,
+      route: route,
+    });
+
+    // Save the new bus to the database
+    await newBus.save();
+
+    res.status(201).json({ message: 'Bus added successfully' });
+  } catch (error) {
+    console.error('Error adding bus:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
+app.delete('/api/admin/delete-bus', async (req, res) => {
+  try {
+    const { busNumber } = req.body;
+
+    // Check if the bus with the given bus number exists
+    const existingBus = await Bus.findOne({ busNo: busNumber });
+
+    if (!existingBus) {
+      return res.status(404).json({ error: 'Bus not found' });
+    }
+
+    // Use deleteOne to remove the document
+    await Bus.deleteOne({ busNo: busNumber });
+
+    res.status(200).json({ message: 'Bus deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting bus:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 
 // Other routes...
 

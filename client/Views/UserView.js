@@ -101,7 +101,7 @@ const UserView = ({ onLogout }) => {
 
   const fetchDriverLocations = async () => {
     try {
-      const response = await axios.get('http://192.168.29.154:5000/api/drivers/locations');
+      const response = await axios.get('http://192.168.1.32:5000/api/drivers/locations');
       const trackingDrivers = response.data.filter((driver) => driver.isTracking);
       setdriverLocations(trackingDrivers);
       if (selectedDriver) {
@@ -147,7 +147,7 @@ const UserView = ({ onLogout }) => {
 
   const handleMarkerPress = async (driver) => {
     try {
-      const response = await axios.get(`http://192.168.29.154:5000/api/drivers/${driver._id}/bus`);
+      const response = await axios.get(`http://192.168.1.32:5000/api/drivers/${driver._id}/bus`);
       const busDetails = response.data;
   
       // Check if the selected driver is still tracking
@@ -207,7 +207,6 @@ const UserView = ({ onLogout }) => {
   };
 
   const clearSelectedDriver = () => {
-    console.log(selectedDriver);
     setSelectedDriver(null);
     setSelectedBusRoute([]);
     setBusStopsVisible(false);
